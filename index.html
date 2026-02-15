@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <base target="_top">
+  <meta charset="UTF-8">
+
+  <!-- ブラウザのタブに表示されるタイトル -->
+  <title>佐賀学園・Ⅰ型</title>
+
+  <!-- ブラウザのタブに表示されるアイコン -->
+  <link rel="icon" href="Goukei_icon.png">
+
+  <!-- manifest を読み込む -->
+  <link rel="manifest" href="manifest.json">
+
+  <!-- iPhone 用のアイコン指定（任意） -->
+  <link rel="apple-touch-icon" href="Goukei_icon.png">
+
+  <style>
+
+    body {
+      font-family:"Migu 1M", "Migu 2M", "Noto Sans Mono CJK JP", monospace;
+      margin: 0;
+      padding: 20px;
+      padding-bottom: 20px;
+      font-size: 16px;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-start;  /* 上から並べる */
+    }
+
+    input { font-size: 24px; text-align: center; width: 60px; }
+
+    button { font-size: 24px; padding: 8px 12px; }
+    
+    .quantity-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-top: 0px;
+      margin-bottom: 0px;
+    }
+    
+    .qty-btn1 {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 80px;
+      height: 30px;
+      font-size: 24px;
+      color: red;
+      padding: 0;
+      line-height: 1;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      border-radius: 6px;
+      cursor: pointer;
+    
+    }.qty-btn2 {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 80px;
+      height: 30px;
+      font-size: 24px;
+      color: blue;
+      padding: 0;
+      line-height: 1;
+      border: 1px solid #ccc;
+      background: #f5f5f5;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .qty-input {
+      width: 80px;
+      height: 28px;
+      font-size: 20px;
+      text-align: center;
+    }
+
+    .btn-clear {
+      background-color: #ffcccc;  /* 薄い赤 */
+      color: #900;                /* 文字は少し濃い赤 */
+      border: 1px solid #ff9999;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .btn-standard {
+      background-color: #e0e0e0;  /* 薄いグレー */
+      color: #000;                /* 黒文字 */
+      border: 1px solid #bdbdbd;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+
+    .DispPrice {                  /* 単価の桁数の違いによる表示のズレを解消する */
+      font-family: monospace;       /* 等幅フォントで数字とスペースの幅を揃える */
+      white-space: pre;             /* padStart のスペースをそのまま表示 */
+    }
+ 
+  </style>
+</head>
+
+<body>
+
+  <!-- ＊＊＊＊＊　タイトルを設定する（男子＝青色／女子＝赤色） ＊＊＊＊＊　-->
+  <p style="font-size: 28px; font-weight: bold; color: blue;">
+    佐賀学園高校　Ⅰ型制服
+  </p>
+
+  <!-- 商品リスト一覧を自動生成する --> 
+  <div id="Items"></div>
+  
+  <div class="quantity-wrapper">
+    <button class="btn-clear" onclick="AllZero()"> 全削除 </button>
+    <button class="btn-standard" onclick="Init_1()"> 標準数 </button>
+    <button class="btn-standard" onclick="Init_2()"> 数２ </button>
+    <button class="btn-standard" onclick="Init_3()"> 数３ </button>
+    <span id="Result" style="margin-left: 20px; font-size: 40px;"></span>
+  </div>
+  <p>（消費税10％　<span id="TaxResult" ></span>）</p>
+  
+  <script>
+
+    // Service Worker を登録
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("sw.js");
+    }
+
+    //　＊＊＊＊＊　ここから商品情報を登録する（商品名、単価、標準数、数２、数３、インプットボックス背景色）　＊＊＊＊＊
+    const Items = [
+      { Name: "ニットブレザー　　　　　", Price: 24600, PTN1: 1 , PTN2: 1 ,PTN3: 1 , Backcolor: "yellow" },
+      { Name: "冬スラックス　　　　　　", Price: 13800, PTN1: 1 , PTN2: 1 ,PTN3: 1 , Backcolor: "yellow" },
+      { Name: "長袖ニットシャツ・白　　", Price:  4450, PTN1: 2 , PTN2: 2 ,PTN3: 2 , Backcolor: "yellow" },
+      { Name: "ネクタイ　　　　　　　　", Price:  2600, PTN1: 1 , PTN2: 1 ,PTN3: 1 , Backcolor: "yellow" },
+      { Name: "ベルト　　　　　　　　　", Price:  1600, PTN1: 1 , PTN2: 1 ,PTN3: 1 , Backcolor: "yellow" },
+      { Name: "ニットベスト・紺　　　　", Price:  4350, PTN1: 0 , PTN2: 1 ,PTN3: 1 , Backcolor: "white" },
+      { Name: "ニットベスト・グレー　　", Price:  4350, PTN1: 0 , PTN2: 0 ,PTN3: 1 , Backcolor: "white" },
+      { Name: "半袖ニットシャツ・白　　", Price:  4350, PTN1: 2 , PTN2: 2 ,PTN3: 1 , Backcolor: "yellow" },
+      { Name: "半袖ニットシャツ・青　　", Price:  4350, PTN1: 0 , PTN2: 0 ,PTN3: 1 , Backcolor: "white" },
+      { Name: "半袖ニットシャツ・ピンク", Price:  4350, PTN1: 0 , PTN2: 0 ,PTN3: 1 , Backcolor: "white" },
+      { Name: "夏スラックス　　　　　　", Price: 12200, PTN1: 1 , PTN2: 1 ,PTN3: 1 , Backcolor: "yellow" },
+      { Name: "半袖ポロシャツ・白　　　", Price:  4650, PTN1: 0 , PTN2: 1 ,PTN3: 1 , Backcolor: "white" },
+      { Name: "半袖ポロシャツ・紺　　　", Price:  4650, PTN1: 0 , PTN2: 0 ,PTN3: 1 , Backcolor: "white" },
+    ];
+    //　＊＊＊＊＊　ここからまで　＊＊＊＊＊　商品の追加は行をコピーして増やせば何個でもＯＫ　＊＊＊＊＊
+    
+    const ITEM_COUNT = Items.length;       //　Itemsに登録された件数を取得する
+
+    const container = document.getElementById("Items");     //　商品の数だけ「　商品名　単価　注文数　[－][＋]　」行を作成する
+    Items.forEach((Item, i) => {
+      const PriceStr = Item.Price.toLocaleString().padStart(7, " ");
+      container.innerHTML += `
+        <div class="quantity-wrapper">
+          <p>${Item.Name}：<strong class="DispPrice">${PriceStr}</strong> × </p>
+          <input id="N${i+1}"
+                 class="qty-input"
+                 type="number"
+                 min="0"
+                 value="${Item.PTN1}"
+                 style="background-color: ${Item.Backcolor}">
+          <button class="qty-btn1" onclick="changeQty('N${i+1}', -1)">－</button>
+          <button class="qty-btn2" onclick="changeQty('N${i+1}', 1)">＋</button>
+        </div>
+      `;
+    });
+
+    window.onload = function() {          //　ページ読み込みと同時に合計金額を再計算する
+      calc();
+    };
+    
+    function AllZero() {                  //　注文数をオールゼロにする
+      Items.forEach((Item, i) => {
+        document.getElementById(`N${i + 1}`).value = 0;
+      });
+      calc();
+    }
+
+    function Init_1() {                   //　注文数をパターン１にする
+      Items.forEach((Item, i) => {
+        document.getElementById(`N${i + 1}`).value = Item.PTN1;
+      });
+      calc();
+    }
+
+    function Init_2() {                   //　注文数をパターン２にする
+      Items.forEach((Item, i) => {
+        document.getElementById(`N${i + 1}`).value = Item.PTN2;
+      });
+      calc();
+    }
+
+    function Init_3() {                   //　注文数をパターン３にする
+      Items.forEach((Item, i) => {
+        document.getElementById(`N${i + 1}`).value = Item.PTN3;
+      });
+      calc();
+    }
+
+    function calc() {                     //　合計金額を再計算する
+      let Total = 0;
+      Items.forEach((Item, i) => {
+        const num = Number(document.getElementById(`N${i + 1}`).value);
+        Total += Item.Price * num;
+      });
+      document.getElementById("Result").textContent = Total.toLocaleString() + " 円";   //　合計金額
+      const Rate = 0.1;
+      const Tax = Math.floor(Total / (1 + Rate) * Rate);
+      document.getElementById("TaxResult").textContent = Tax.toLocaleString() + " 円";  //　10％消費税額
+    }
+
+    function changeQty(id,delta) {                          //　増減ボタンをタップして注文数を変更した時は再計算する
+      const input = document.getElementById(id);
+      const value = parseInt(input.value) || 0;             //　入力欄の値を整数として取り出す。もし変換できなかったら 0 として扱う
+      input.value = Math.max(0, value + delta);             //　数量を増減しつつ、0 未満には絶対ならないようにするコード
+      calc(); 
+    }
+
+    const ids = Array.from({ length: ITEM_COUNT }, (_, i) => `N${i + 1}`);    //　商品の数だけidを自動生成する
+    ids.forEach(id => {
+      document.getElementById(id).addEventListener("input", calc);            //　各インプットボックスの値が更新されたら合計金額を再計算する
+    });
+
+  </script>
+</body>
+</html>
